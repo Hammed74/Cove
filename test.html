@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Socket.IO Location Tester</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; }
+    fieldset { margin-bottom: 16px; }
+    label { display: block; margin-top: 8px; }
+    input[type="text"], input[type="number"] { width: 320px; max-width: 100%; }
+    button { margin-right: 8px; margin-top: 8px; }
+    #log { border: 1px solid #ccc; padding: 8px; height: 260px; overflow-y: auto; background: #fafafa; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h1>Socket.IO Location Tester</h1>
+
+  <fieldset>
+    <legend>Connection</legend>
+    <label>Server URL
+      <input id="serverUrl" type="text" value="http://localhost:3000" />
+    </label>
+    <label>User ID
+      <input id="userId" type="text" value="userA" />
+    </label>
+    <label>Friends (comma separated, optional)
+      <input id="friends" type="text" value="" />
+    </label>
+    <div class="row">
+      <button id="connectBtn">Connect</button>
+      <button id="authBtn">Authenticate</button>
+      <button id="disconnectBtn">Disconnect</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Send Location</legend>
+    <div class="row">
+      <label>Latitude
+        <input id="lat" type="number" step="0.000001" value="40.7128" />
+      </label>
+      <label>Longitude
+        <input id="lng" type="number" step="0.000001" value="-74.0060" />
+      </label>
+      <label>Altitude
+        <input id="alt" type="number" step="0.1" value="5" />
+      </label>
+      <label>Accuracy
+        <input id="acc" type="number" step="0.1" value="5" />
+      </label>
+    </div>
+    <div class="row">
+      <button id="sendLocationBtn">Send Location Once</button>
+      <button id="startStreamBtn">Start Random Stream</button>
+      <button id="stopStreamBtn">Stop Stream</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Log</legend>
+    <div id="log"></div>
+  </fieldset>
+
+  <script src="./node_modules/socket.io-client/dist/socket.io.min.js"></script>
+  <script>
+    let socket = null;
+    let streamTimer = null;
+
+    function log(msg, obj) {
+      const el = document.getElementById('log');
+      const time = new Date().toISOString();
+      const line = document.createElement('div');
+      line.textContent = obj ? `${time} - ${msg} ${JSON.stringify(obj)}` : `${time} - ${msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function connect() {
+      const url = document.getElementById('serverUrl').value.trim();
+      const userId = document.getElementById('userId').value.trim();
+      if (!url || !userId) {
+        alert('Server URL and User ID are required');
+        return;
+      }
+      if (socket) {
+        socket.disconnect();
+      }
+      socket = io(url, { query: { userId } });
+
+      socket.on('connect', () => log(`connected as ${userId}, socket ${socket.id}`));
+      socket.on('disconnect', (reason) => log(`disconnected: ${reason}`));
+      socket.on('connect_error', (err) => log('connect_error', { message: err.message }));
+      socket.on('friend:location', (payload) => log('friend:location', payload));
+    }
+
+    function authenticate() {
+      if (!socket || !socket.connected) {
+        alert('Connect first');
+        return;
+      }
+      const userId = document.getElementById('userId').value.trim();
+      const friendsRaw = document.getElementById('friends').value.trim();
+      const friends = friendsRaw ? friendsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+      socket.emit('authenticate', { userId, friends }, (res) => {
+        log('auth ack', res);
+      });
+    }
+
+    function sendLocationOnce() {
+      if (!socket || !socket.connected) {
+        alert('Connect first');
+        return;
+      }
+      const payload = readLocationForm();
+      socket.emit('location:update', payload, (res) => {
+        log('location ack', res);
+      });
+    }
+
+    function startStream() {
+      if (!socket || !socket.connected) {
+        alert('Connect first');
+        return;
+      }
+      stopStream();
+      streamTimer = setInterval(() => {
+        const base = readLocationForm();
+        const jitter = () => (Math.random() - 0.5) * 0.001;
+        const payload = {
+          ...base,
+          latitude: base.latitude + jitter(),
+          longitude: base.longitude + jitter(),
+          timestamp: Date.now()
+        };
+        socket.emit('location:update', payload, (res) => {
+          log('stream ack', res);
+        });
+      }, 2000);
+      log('started stream (every 2s)');
+    }
+
+    function stopStream() {
+      if (streamTimer) {
+        clearInterval(streamTimer);
+        streamTimer = null;
+        log('stopped stream');
+      }
+    }
+
+    function disconnect() {
+      stopStream();
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+    }
+
+    function readLocationForm() {
+      return {
+        latitude: Number(document.getElementById('lat').value),
+        longitude: Number(document.getElementById('lng').value),
+        altitude: Number(document.getElementById('alt').value),
+        accuracy: Number(document.getElementById('acc').value),
+        timestamp: Date.now()
+      };
+    }
+
+    document.getElementById('connectBtn').addEventListener('click', connect);
+    document.getElementById('authBtn').addEventListener('click', authenticate);
+    document.getElementById('sendLocationBtn').addEventListener('click', sendLocationOnce);
+    document.getElementById('startStreamBtn').addEventListener('click', startStream);
+    document.getElementById('stopStreamBtn').addEventListener('click', stopStream);
+    document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+  </script>
+</body>
+</html>
