@@ -1,0 +1,73 @@
+const express = require('express');
+const router = express.Router();
+
+router.get('/', (_req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+<html>
+  <body>
+    <h1>Socket.IO GPS Test</h1>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // Connect to your backend (ngrok URL if using ngrok)
+      let socket;
+
+      const agent = navigator.userAgent;
+      console.log(agent.toString());
+
+      if (agent.includes("Macintosh; Intel Mac OS X")) {
+        socket = io(
+          "http://localhost:3000",
+          {
+            transports: ["websocket"],
+            query: { userId: "iphoneUser" },
+          }
+        );
+      } else {
+        socket = io(
+          "https://continuable-albertina-egotistically.ngrok-free.dev",
+          {
+            transports: ["websocket"],
+            query: { userId: "iphoneUser" },
+          }
+        );
+      }
+
+      socket.on("connect", () => {
+        console.log("Connected to server:", socket.id);
+      });
+
+      function sendLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              socket.emit("location:update", {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              });
+              console.log(
+                "Location sent:",
+                pos.coords.latitude,
+                pos.coords.longitude
+              );
+            },
+            (err) => {
+              console.error("Error getting location:", err);
+            }
+          );
+        } else {
+          console.error("Geolocation not supported");
+        }
+      }
+
+      // Send location every 5 seconds (5000 ms)
+      setInterval(sendLocation, 1000);
+    </script>
+  </body>
+</html>
+  `);
+
+  console.log("Live test started.")
+});
+
+module.exports = router;

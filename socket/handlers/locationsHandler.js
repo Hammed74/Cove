@@ -30,11 +30,11 @@ function registerLocationHandlers(io,socket){
     });
 
     socket.on('location:update', (data, ack) => {
-        const sender = getUserBySocket(socket.id);
-        if (!sender){
-            if (ack) ack({ok: false, error: 'not authenticated'});
-            return;
-        }
+        // const sender = getUserBySocket(socket.id);
+        // if (!sender){
+        //     if (ack) ack({ok: false, error: 'not authenticated'});
+        //     return;
+        // }
         const senderId = socket.handshake.query.userId
 
         const location = {
@@ -48,6 +48,8 @@ function registerLocationHandlers(io,socket){
             if (ack) ack({ ok: false, error: 'invalid coordinates' });
             return;
         }
+
+        console.log("Location is " + location.latitude + "+" + location.longitude)
 
         updateLocation(senderId, location)
 

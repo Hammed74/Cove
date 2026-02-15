@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Socket.IO Location Tester</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; }
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.4; background-color: rgb(32, 32, 32); color: rgb(148, 25, 25); }
     fieldset { margin-bottom: 16px; }
     label { display: block; margin-top: 8px; }
     input[type="text"], input[type="number"] { width: 320px; max-width: 100%; }
     button { margin-right: 8px; margin-top: 8px; }
-    #log { border: 1px solid #ccc; padding: 8px; height: 260px; overflow-y: auto; background: #fafafa; }
+    #log { border: 1px solid #000000; padding: 8px; height: 260px; overflow-y: auto; background: #cfc9c9; }
     .row { display: flex; gap: 12px; flex-wrap: wrap; }
   </style>
 </head>
@@ -135,9 +135,10 @@
           timestamp: Date.now()
         };
         socket.emit('location:update', payload, (res) => {
-          log('stream ack', res);
+          // log('stream ack', res);
+          log(`${payload.latitude} + ${payload.longitude}`)
         });
-      }, 2000);
+      }, 1000);
       log('started stream (every 2s)');
     }
 
